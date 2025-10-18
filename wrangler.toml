@@ -1,0 +1,19 @@
+name = "haven-platform"
+main = "src/worker.js"
+compatibility_date = "2025-10-18"
+
+# Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "haven_db"
+database_id = "your-database-id-here"
+
+# Environment variables (set these in Cloudflare dashboard)
+# ANTHROPIC_API_KEY
+# OPENAI_API_KEY
+
+[build]
+command = "npm run build"
+
+[build.upload]
+format = "service-worker"
