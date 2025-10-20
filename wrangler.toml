@@ -13,10 +13,9 @@ database_id = "YOUR_D1_DATABASE_ID"
 ENVIRONMENT = "production"
 
 # Secrets (set with: wrangler secret put ANTHROPIC_API_KEY)
-# ANTHROPIC_API_KEY
-# OPENAI_API_KEY
+# ANTHROPIC_API_KEY (required)
+# OPENAI_API_KEY (optional)
 
-# Assets for frontend
+# Static assets for frontend
 [site]
 bucket = "./public"
-entry-point = "."
