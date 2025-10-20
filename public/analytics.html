@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAVEN Analytics - Municipal Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-purple-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold">🏠 HAVEN Analytics</h1>
+                        <p class="text-purple-100 text-sm">Municipal Dashboard</p>
+                    </div>
+                    <a href="/dashboard.html" class="bg-white text-purple-600 px-4 py-2 rounded-lg hover:bg-purple-50 font-medium">
+                        ← Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-6">
+            <!-- Key Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="text-3xl font-bold text-blue-600">142</div>
+                    <div class="text-sm text-gray-600 mt-1">Total Clients</div>
+                    <div class="text-xs text-green-600 mt-1">↑ 12% this month</div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="text-3xl font-bold text-green-600">48</div>
+                    <div class="text-sm text-gray-600 mt-1">Housed This Month</div>
+                    <div class="text-xs text-green-600 mt-1">↑ 8% vs last month</div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="text-3xl font-bold text-orange-600">21</div>
+                    <div class="text-sm text-gray-600 mt-1">Average Days to Housing</div>
+                    <div class="text-xs text-green-600 mt-1">↓ 3 days improvement</div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="text-3xl font-bold text-purple-600">94%</div>
+                    <div class="text-sm text-gray-600 mt-1">Intake Completion Rate</div>
+                    <div class="text-xs text-gray-600 mt-1">HUD Compliant</div>
+                </div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Intakes by Week</h3>
+                    <canvas id="intakes-chart"></canvas>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Housing Placements by Type</h3>
+                    <canvas id="housing-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Client Risk Distribution</h3>
+                    <canvas id="risk-chart"></canvas>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Top Barriers to Housing</h3>
+                    <canvas id="barriers-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- HUD Compliance Report -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">📋 HUD Compliance Status</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-green-50 border border-green-200 rounded">
+                        <span class="font-medium">Data Quality Completeness</span>
+                        <span class="text-green-700 font-bold">98%</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-green-50 border border-green-200 rounded">
+                        <span class="font-medium">HMIS Integration</span>
+                        <span class="text-green-700 font-bold">✓ Active</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-green-50 border border-green-200 rounded">
+                        <span class="font-medium">Coordinated Entry Compliance</span>
+                        <span class="text-green-700 font-bold">100%</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <span class="font-medium">Annual Audit Status</span>
+                        <span class="text-yellow-700 font-bold">Due in 45 days</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Intakes Chart
+        const intakesCtx = document.getElementById('intakes-chart').getContext('2d');
+        new Chart(intakesCtx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'New Intakes',
+                    data: [28, 34, 42, 38],
+                    borderColor: 'rgb(37, 99, 235)',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true
+            }
+        });
+
+        // Housing Chart
+        const housingCtx = document.getElementById('housing-chart').getContext('2d');
+        new Chart(housingCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Emergency Shelter', 'Rapid Rehousing', 'PSH', 'Transitional'],
+                datasets: [{
+                    data: [45, 30, 15, 10],
+                    backgroundColor: [
+                        'rgb(37, 99, 235)',
+                        'rgb(16, 185, 129)',
+                        'rgb(245, 158, 11)',
+                        'rgb(139, 92, 246)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true
+            }
+        });
+
+        // Risk Chart
+        const riskCtx = document.getElementById('risk-chart').getContext('2d');
+        new Chart(riskCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Low', 'Medium', 'High'],
+                datasets: [{
+                    label: 'Clients',
+                    data: [42, 58, 42],
+                    backgroundColor: [
+                        'rgb(16, 185, 129)',
+                        'rgb(245, 158, 11)',
+                        'rgb(239, 68, 68)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Barriers Chart
+        const barriersCtx = document.getElementById('barriers-chart').getContext('2d');
+        new Chart(barriersCtx, {
+            type: 'bar',
+            data: {
+                labels: ['No Income', 'Criminal Record', 'Poor Credit', 'Eviction History', 'No Rental History'],
+                datasets: [{
+                    label: 'Number of Clients',
+                    data: [68, 45, 52, 38, 41],
+                    backgroundColor: 'rgb(139, 92, 246)'
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

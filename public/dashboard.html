@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAVEN Dashboard - Caseworker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold">🏠 HAVEN</h1>
+                        <p class="text-blue-100 text-sm">Caseworker Dashboard</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-medium" id="caseworker-name">Loading...</p>
+                        <p class="text-sm text-blue-100" id="caseload-info">Caseload: 0/0</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-6">
+            <!-- Daily AI Briefing -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900">☀️ Daily AI Briefing</h2>
+                    <button onclick="refreshBriefing()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div id="briefing-content" class="prose max-w-none">
+                    <div class="animate-pulse">
+                        <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button onclick="showQRGenerator()" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 font-medium">
+                    📱 Generate QR Code
+                </button>
+                <button onclick="showDocumentGenerator()" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 font-medium">
+                    📄 Generate Document
+                </button>
+                <button onclick="showAnalytics()" class="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 font-medium">
+                    📊 View Analytics
+                </button>
+            </div>
+
+            <!-- Active Cases -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">👥 Active Cases</h2>
+                <div id="cases-list" class="space-y-4">
+                    <div class="animate-pulse">
+                        <div class="h-20 bg-gray-200 rounded mb-2"></div>
+                        <div class="h-20 bg-gray-200 rounded"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Generator Modal -->
+    <div id="qr-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4">Generate QR Code</h3>
+            <input type="text" id="qr-location" placeholder="Location (e.g., Downtown Shelter)" class="w-full px-4 py-2 border rounded-lg mb-4">
+            <input type="text" id="qr-campaign" placeholder="Campaign Name (optional)" class="w-full px-4 py-2 border rounded-lg mb-4">
+            <div class="flex gap-2">
+                <button onclick="generateQR()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
+                    Generate
+                </button>
+                <button onclick="closeQRModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300">
+                    Cancel
+                </button>
+            </div>
+            <div id="qr-result" class="mt-4 hidden">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p class="font-medium mb-2">QR Code Generated!</p>
+                    <p class="text-sm mb-2">Code: <span id="qr-code" class="font-mono"></span></p>
+                    <a id="qr-link" href="" target="_blank" class="text-blue-600 hover:underline text-sm">Open Intake Form</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get caseworker ID from URL or localStorage
+        const caseworkerId = new URLSearchParams(window.location.search).get('id') || localStorage.getItem('caseworker_id') || 'demo-caseworker-1';
+        localStorage.setItem('caseworker_id', caseworkerId);
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`/api/caseworker/${caseworkerId}/dashboard`);
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('caseworker-name').textContent = data.caseworker.name;
+                    document.getElementById('caseload-info').textContent = 
+                        `Caseload: ${data.caseworker.current_caseload}/${data.caseworker.max_caseload}`;
+
+                    renderCases(data.assignments);
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        async function loadBriefing() {
+            try {
+                const response = await fetch(`/api/caseworker/${caseworkerId}/briefing`);
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('briefing-content').innerHTML = 
+                        data.briefing.replace(/\n/g, '<br>');
+                }
+            } catch (error) {
+                document.getElementById('briefing-content').innerHTML = 
+                    '<p class="text-gray-600">Unable to load briefing. Please refresh.</p>';
+            }
+        }
+
+        function renderCases(assignments) {
+            if (!assignments || assignments.length === 0) {
+                document.getElementById('cases-list').innerHTML = 
+                    '<p class="text-gray-600 text-center py-8">No active cases assigned.</p>';
+                return;
+            }
+
+            const html = assignments.map(a => `
+                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition cursor-pointer" onclick="viewClient('${a.client_id}')">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-900">${a.first_name} ${a.last_name}</h3>
+                            <p class="text-sm text-gray-600">${a.current_living_situation}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-sm font-medium 
+                            ${a.risk_level === 'HIGH' ? 'bg-red-100 text-red-800' : 
+                              a.risk_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' : 
+                              'bg-green-100 text-green-800'}">
+                            ${a.risk_level}
+                        </span>
+                    </div>
+                    <div class="mt-3 flex gap-4 text-sm text-gray-600">
+                        <span>📞 ${a.phone || 'No phone'}</span>
+                        <span>📧 ${a.email || 'No email'}</span>
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium text-gray-700">Vulnerability Score:</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: ${a.vulnerability_score}%"></div>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700">${a.vulnerability_score}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('cases-list').innerHTML = html;
+        }
+
+        function viewClient(clientId) {
+            alert(`Client details view coming soon!\nClient ID: ${clientId}`);
+        }
+
+        function refreshBriefing() {
+            document.getElementById('briefing-content').innerHTML = 
+                '<div class="animate-pulse"><div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div></div>';
+            loadBriefing();
+        }
+
+        function showQRGenerator() {
+            document.getElementById('qr-modal').classList.remove('hidden');
+        }
+
+        function closeQRModal() {
+            document.getElementById('qr-modal').classList.add('hidden');
+            document.getElementById('qr-result').classList.add('hidden');
+        }
+
+        async function generateQR() {
+            const location = document.getElementById('qr-location').value;
+            const campaign = document.getElementById('qr-campaign').value;
+
+            if (!location) {
+                alert('Please enter a location');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/qr/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        location,
+                        campaign_name: campaign || null,
+                        caseworker_id: caseworkerId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('qr-code').textContent = data.qr_code;
+                    document.getElementById('qr-link').href = data.intake_url;
+                    document.getElementById('qr-result').classList.remove('hidden');
+                }
+            } catch (error) {
+                alert('Failed to generate QR code: ' + error.message);
+            }
+        }
+
+        function showDocumentGenerator() {
+            alert('Document generator coming soon!');
+        }
+
+        function showAnalytics() {
+            window.location.href = '/analytics.html';
+        }
+
+        // Initialize
+        loadDashboard();
+        loadBriefing();
+    </script>
+</body>
+</html>

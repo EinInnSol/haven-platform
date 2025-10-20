@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAVEN Intake - Housing Assessment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="min-h-screen">
+        <div class="max-w-2xl mx-auto p-4">
+            <!-- Header -->
+            <div class="bg-blue-600 text-white p-6 rounded-t-lg">
+                <h1 class="text-2xl font-bold">🏠 HAVEN</h1>
+                <p class="text-blue-100 mt-1">Housing Assistance Via Engaged Network</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="bg-white p-4 border-x border-gray-200">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Question <span id="current-step">1</span> of <span id="total-steps">40</span></span>
+                    <span id="progress-percent">2%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 2%"></div>
+                </div>
+            </div>
+
+            <!-- Form Container -->
+            <div id="form-container" class="bg-white p-6 rounded-b-lg shadow-lg">
+                <!-- Questions will be injected here -->
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between mt-4">
+                <button id="prev-btn" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 disabled:opacity-50" disabled>
+                    ← Previous
+                </button>
+                <button id="next-btn" class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+                    Next →
+                </button>
+            </div>
+
+            <!-- Privacy Notice -->
+            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-700">
+                <p><strong>🔒 Your privacy is protected.</strong> All information is confidential and used only to help connect you with housing resources. This assessment complies with HUD standards.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Get QR code ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const qrId = urlParams.get('qr') || window.location.pathname.split('/').pop();
+        
+        let sessionId = null;
+        let currentStep = 0;
+        const answers = {};
+        
+        // HUD-Compliant Assessment Questions
+        const questions = [
+            { id: 'q1_first_name', type: 'text', label: 'First Name', required: true },
+            { id: 'q2_last_name', type: 'text', label: 'Last Name', required: true },
+            { id: 'q3_dob', type: 'date', label: 'Date of Birth', required: true },
+            { id: 'q4_ssn_last4', type: 'text', label: 'Last 4 digits of Social Security (optional)', maxLength: 4 },
+            { id: 'q5_phone', type: 'tel', label: 'Phone Number', placeholder: '(555) 123-4567' },
+            { id: 'q6_email', type: 'email', label: 'Email Address (optional)' },
+            { id: 'q7_gender', type: 'radio', label: 'Gender', options: ['Male', 'Female', 'Non-binary', 'Prefer not to answer'], required: true },
+            { id: 'q8_race', type: 'checkbox', label: 'Race (Select all that apply)', options: ['American Indian/Alaska Native', 'Asian', 'Black/African American', 'Native Hawaiian/Pacific Islander', 'White'], required: true },
+            { id: 'q9_ethnicity', type: 'radio', label: 'Are you Hispanic or Latino?', options: ['Yes', 'No', 'Prefer not to answer'], required: true },
+            { id: 'q10_veteran', type: 'radio', label: 'Have you ever served in the U.S. Armed Forces?', options: ['Yes', 'No'], required: true },
+            { id: 'q11_current_situation', type: 'radio', label: 'Where are you staying tonight?', options: ['Emergency Shelter', 'Transitional Housing', 'Place not meant for habitation (car, street, abandoned building)', 'Staying with friends/family temporarily', 'Hotel/Motel (no permanent residence)', 'Other'], required: true },
+            { id: 'q12_homeless_start', type: 'date', label: 'When did you most recently become homeless?', required: true },
+            { id: 'q13_times_homeless', type: 'number', label: 'How many times have you been homeless in the past 3 years?', required: true },
+            { id: 'q14_total_months', type: 'number', label: 'Total months homeless in the past 3 years', required: true },
+            { id: 'q15_chronic_health', type: 'radio', label: 'Do you have any chronic health conditions?', options: ['Yes', 'No', 'Prefer not to answer'] },
+            { id: 'q16_mental_health', type: 'radio', label: 'Do you have a mental health condition?', options: ['Yes', 'No', 'Prefer not to answer'] },
+            { id: 'q17_substance_use', type: 'radio', label: 'Do you have a substance use disorder?', options: ['Yes', 'No', 'Prefer not to answer'] },
+            { id: 'q18_disability', type: 'radio', label: 'Do you have a physical disability?', options: ['Yes', 'No', 'Prefer not to answer'] },
+            { id: 'q19_hiv_aids', type: 'radio', label: 'Do you have HIV/AIDS?', options: ['Yes', 'No', 'Prefer not to answer'] },
+            { id: 'q20_pregnant', type: 'radio', label: 'Are you currently pregnant?', options: ['Yes', 'No', 'Not applicable', 'Prefer not to answer'] },
+            { id: 'q21_domestic_violence', type: 'radio', label: 'Are you fleeing domestic violence?', options: ['Yes', 'No', 'Prefer not to answer'] },
+            { id: 'q22_income', type: 'radio', label: 'Do you have any income?', options: ['Yes', 'No'], required: true },
+            { id: 'q23_income_source', type: 'checkbox', label: 'Sources of income (if yes)', options: ['Employment', 'Social Security', 'SSI/SSDI', 'Veterans Benefits', 'Unemployment', 'TANF', 'Other'], condition: 'q22_income', conditionValue: 'Yes' },
+            { id: 'q24_monthly_income', type: 'number', label: 'Approximate monthly income ($)', condition: 'q22_income', conditionValue: 'Yes' },
+            { id: 'q25_benefits', type: 'checkbox', label: 'Do you receive any of these benefits?', options: ['SNAP/Food Stamps', 'Medicaid', 'Medicare', 'Veterans Benefits', 'None'] },
+            { id: 'q26_education', type: 'radio', label: 'Highest level of education', options: ['Less than high school', 'High school/GED', 'Some college', 'Associates degree', 'Bachelors degree', 'Graduate degree'] },
+            { id: 'q27_employment', type: 'radio', label: 'Employment status', options: ['Full-time', 'Part-time', 'Unemployed', 'Disabled/Unable to work', 'Retired'] },
+            { id: 'q28_criminal_history', type: 'radio', label: 'Do you have a criminal record?', options: ['Yes', 'No', 'Prefer not to answer'] },
+            { id: 'q29_eviction_history', type: 'radio', label: 'Have you been evicted in the past 7 years?', options: ['Yes', 'No', 'Unsure'] },
+            { id: 'q30_rental_history', type: 'radio', label: 'Do you have rental references?', options: ['Yes', 'No', 'Unsure'] },
+            { id: 'q31_credit_score', type: 'radio', label: 'Approximate credit score', options: ['Good (670+)', 'Fair (580-669)', 'Poor (below 580)', 'Unknown'] },
+            { id: 'q32_transportation', type: 'radio', label: 'Do you have reliable transportation?', options: ['Yes, personal vehicle', 'Yes, public transit', 'No'] },
+            { id: 'q33_id_documents', type: 'checkbox', label: 'Which documents do you have?', options: ['State ID/Drivers License', 'Birth Certificate', 'Social Security Card', 'None of these'] },
+            { id: 'q34_housing_preference', type: 'radio', label: 'What type of housing are you seeking?', options: ['Emergency Shelter', 'Transitional Housing', 'Permanent Supportive Housing', 'Rapid Rehousing', 'Affordable Apartment', 'Any available'], required: true },
+            { id: 'q35_barriers', type: 'checkbox', label: 'What barriers to housing do you face?', options: ['No income', 'Poor credit', 'Criminal record', 'Eviction history', 'No rental history', 'Pets', 'Large family size', 'Disability accommodation needs', 'None'] },
+            { id: 'q36_timeline', type: 'radio', label: 'How urgent is your housing need?', options: ['Immediate (tonight)', 'This week', 'This month', 'Flexible'], required: true },
+            { id: 'q37_dependents', type: 'number', label: 'Number of dependents (children under 18)', min: 0, required: true },
+            { id: 'q38_pets', type: 'radio', label: 'Do you have pets?', options: ['Yes', 'No'] },
+            { id: 'q39_additional_needs', type: 'textarea', label: 'Is there anything else we should know to help you?', rows: 3 },
+            { id: 'q40_consent', type: 'checkbox', label: 'I consent to sharing this information with housing service providers to assist in finding housing', options: ['I agree'], required: true }
+        ];
+
+        // Initialize session
+        async function initSession() {
+            try {
+                const response = await fetch(`/api/intake/${qrId}/start`);
+                const data = await response.json();
+                if (data.success) {
+                    sessionId = data.session_id;
+                    renderQuestion();
+                } else {
+                    showError('Invalid QR code. Please scan again or contact support.');
+                }
+            } catch (error) {
+                showError('Unable to start session. Please check your connection.');
+            }
+        }
+
+        function renderQuestion() {
+            const question = questions[currentStep];
+            if (!question) return;
+
+            // Update progress
+            const progress = ((currentStep + 1) / questions.length) * 100;
+            document.getElementById('progress-bar').style.width = progress + '%';
+            document.getElementById('current-step').textContent = currentStep + 1;
+            document.getElementById('total-steps').textContent = questions.length;
+            document.getElementById('progress-percent').textContent = Math.round(progress) + '%';
+
+            // Check if question should be shown based on conditions
+            if (question.condition && answers[question.condition] !== question.conditionValue) {
+                // Skip this question
+                currentStep++;
+                renderQuestion();
+                return;
+            }
+
+            // Render question HTML
+            let html = `
+                <div class="mb-6">
+                    <label class="block text-lg font-medium text-gray-900 mb-3">
+                        ${question.label}
+                        ${question.required ? '<span class="text-red-500">*</span>' : ''}
+                    </label>
+            `;
+
+            switch(question.type) {
+                case 'text':
+                case 'email':
+                case 'tel':
+                case 'number':
+                case 'date':
+                    html += `<input type="${question.type}" id="current-input" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                        ${question.placeholder ? `placeholder="${question.placeholder}"` : ''}
+                        ${question.maxLength ? `maxlength="${question.maxLength}"` : ''}
+                        ${question.min !== undefined ? `min="${question.min}"` : ''}
+                        value="${answers[question.id] || ''}">`;
+                    break;
+                case 'textarea':
+                    html += `<textarea id="current-input" rows="${question.rows || 4}"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                        >${answers[question.id] || ''}</textarea>`;
+                    break;
+                case 'radio':
+                    question.options.forEach(option => {
+                        const checked = answers[question.id] === option ? 'checked' : '';
+                        html += `
+                            <label class="flex items-center p-4 mb-2 border border-gray-300 rounded-lg hover:bg-blue-50 cursor-pointer ${checked ? 'bg-blue-50 border-blue-500' : ''}">
+                                <input type="radio" name="current-input" value="${option}" ${checked}
+                                    class="w-5 h-5 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-3 text-gray-900">${option}</span>
+                            </label>
+                        `;
+                    });
+                    break;
+                case 'checkbox':
+                    const savedAnswers = answers[question.id] || [];
+                    question.options.forEach(option => {
+                        const checked = savedAnswers.includes(option) ? 'checked' : '';
+                        html += `
+                            <label class="flex items-center p-4 mb-2 border border-gray-300 rounded-lg hover:bg-blue-50 cursor-pointer ${checked ? 'bg-blue-50 border-blue-500' : ''}">
+                                <input type="checkbox" name="current-input" value="${option}" ${checked}
+                                    class="w-5 h-5 text-blue-600 focus:ring-blue-500 rounded">
+                                <span class="ml-3 text-gray-900">${option}</span>
+                            </label>
+                        `;
+                    });
+                    break;
+            }
+
+            html += '</div>';
+            document.getElementById('form-container').innerHTML = html;
+
+            // Update button states
+            document.getElementById('prev-btn').disabled = currentStep === 0;
+            document.getElementById('next-btn').textContent = currentStep === questions.length - 1 ? 'Submit →' : 'Next →';
+        }
+
+        function saveCurrentAnswer() {
+            const question = questions[currentStep];
+            const input = document.getElementById('current-input');
+            
+            if (question.type === 'radio') {
+                const selected = document.querySelector('input[name="current-input"]:checked');
+                if (selected) answers[question.id] = selected.value;
+            } else if (question.type === 'checkbox') {
+                const selected = Array.from(document.querySelectorAll('input[name="current-input"]:checked'))
+                    .map(cb => cb.value);
+                answers[question.id] = selected;
+            } else if (input) {
+                answers[question.id] = input.value;
+            }
+        }
+
+        function validateCurrentQuestion() {
+            const question = questions[currentStep];
+            if (!question.required) return true;
+
+            const answer = answers[question.id];
+            if (question.type === 'checkbox') {
+                return answer && answer.length > 0;
+            }
+            return answer && answer.toString().trim() !== '';
+        }
+
+        async function submitIntake() {
+            const submitBtn = document.getElementById('next-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="animate-pulse">Submitting...</span>';
+
+            try {
+                const response = await fetch('/api/intake/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        assessment_data: answers
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    // Show success screen
+                    document.getElementById('form-container').innerHTML = `
+                        <div class="text-center py-8">
+                            <div class="text-6xl mb-4">✅</div>
+                            <h2 class="text-2xl font-bold text-gray-900 mb-4">Assessment Complete!</h2>
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+                                <p class="text-lg text-gray-800 mb-4">${data.message}</p>
+                                <div class="text-left space-y-2">
+                                    <p><strong>Your Caseworker:</strong> ${data.caseworker.name}</p>
+                                    <p><strong>Phone:</strong> ${data.caseworker.phone}</p>
+                                    <p><strong>Email:</strong> ${data.caseworker.email}</p>
+                                    <p class="mt-4 text-sm text-gray-600"><strong>Expected Contact:</strong> ${data.expected_contact}</p>
+                                </div>
+                            </div>
+                            <p class="text-gray-600">Please keep your phone available. Help is on the way.</p>
+                        </div>
+                    `;
+                    document.getElementById('prev-btn').style.display = 'none';
+                    document.getElementById('next-btn').style.display = 'none';
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showError('Submission failed: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit →';
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('form-container').innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                    <div class="text-4xl mb-4">⚠️</div>
+                    <p class="text-red-800">${message}</p>
+                </div>
+            `;
+        }
+
+        // Event listeners
+        document.getElementById('next-btn').addEventListener('click', () => {
+            saveCurrentAnswer();
+            if (!validateCurrentQuestion()) {
+                alert('Please answer this required question.');
+                return;
+            }
+            if (currentStep === questions.length - 1) {
+                submitIntake();
+            } else {
+                currentStep++;
+                renderQuestion();
+            }
+        });
+
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            saveCurrentAnswer();
+            currentStep--;
+            renderQuestion();
+        });
+
+        // Start
+        initSession();
+    </script>
+</body>
+</html>
