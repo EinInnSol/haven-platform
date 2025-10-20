@@ -1,19 +1,22 @@
 name = "haven-platform"
 main = "src/worker.js"
-compatibility_date = "2025-10-18"
+compatibility_date = "2024-10-01"
 
-# Database binding
+# D1 Database binding
 [[d1_databases]]
 binding = "DB"
 database_name = "haven_db"
-database_id = "your-database-id-here"
+database_id = "YOUR_D1_DATABASE_ID"
 
-# Environment variables (set these in Cloudflare dashboard)
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets (set with: wrangler secret put ANTHROPIC_API_KEY)
 # ANTHROPIC_API_KEY
 # OPENAI_API_KEY
 
-[build]
-command = "npm run build"
-
-[build.upload]
-format = "service-worker"
+# Assets for frontend
+[site]
+bucket = "./public"
+entry-point = "."
