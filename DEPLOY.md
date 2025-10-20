@@ -1,219 +1,333 @@
-# 🚀 HAVEN Platform - Deployment Guide
+# 🚀 HAVEN Platform Deployment Guide
 
-## What's Been Built
+Complete deployment instructions for Cloudflare Workers + D1 + Pages.
 
-✅ **Backend API** (Cloudflare Workers)
-- QR code generation
-- HUD-compliant intake processing
-- AI analysis engine
-- Caseworker dashboard endpoints
-- Municipal analytics
+## Prerequisites
 
-✅ **Frontend UI** (Static HTML/Tailwind/Vanilla JS)
-- Mobile intake form (40 HUD questions)
-- Caseworker dashboard
-- Municipal analytics dashboard
-- QR code generator
-- Real-time AI briefings
+### 1. Accounts & Tools
+- [ ] Cloudflare account (free tier works)
+- [ ] Node.js 18+ installed
+- [ ] Git installed
+- [ ] Anthropic API key ([get one here](https://console.anthropic.com/))
+- [ ] OpenAI API key (optional, [get here](https://platform.openai.com/))
 
-✅ **Database** (D1 SQL)
-- Complete schema with all tables
-- Seed data with demo caseworkers
+### 2. Check Your Setup
 
-## Quick Deploy (5 Minutes)
+```bash
+# Verify Node.js
+node --version  # Should be 18.x or higher
 
-### Step 1: Install & Login
+# Verify npm
+npm --version
+```
+
+## Quick Deploy (Recommended)
+
+### Option A: Automated Script
+
+```bash
+# Clone and enter repo
+git clone https://github.com/EinInnSol/haven-platform.git
+cd haven-platform
+
+# Make script executable
+chmod +x deploy.sh
+
+# Run deployment
+./deploy.sh
+```
+
+The script handles everything: dependencies, database, secrets, deployment.
+
+### Option B: Manual Steps
+
+Follow this if the automated script fails or you want more control.
+
+## Manual Deployment Steps
+
+### Step 1: Install Dependencies
+
 ```bash
 npm install
+```
+
+### Step 2: Login to Cloudflare
+
+```bash
 npx wrangler login
 ```
 
-### Step 2: Create Database
+This opens a browser window. Authorize Wrangler to access your Cloudflare account.
+
+### Step 3: Create D1 Database
+
 ```bash
-npm run db:create
+# Create the database
+npx wrangler d1 create haven_db
 ```
 
-Copy the database ID from the output and update `wrangler.toml`:
+You'll get output like:
+```
+✅ Successfully created DB 'haven_db'
+📋 Database ID: abc123-def456-ghi789
+```
+
+**IMPORTANT:** Copy the Database ID!
+
+### Step 4: Update Configuration
+
+Edit `wrangler.toml` and replace `YOUR_D1_DATABASE_ID` with your actual database ID:
+
 ```toml
-database_id = "paste-your-id-here"
+[[d1_databases]]
+binding = "DB"
+database_name = "haven_db"
+database_id = "abc123-def456-ghi789"  # ← Your actual ID here
 ```
 
-### Step 3: Initialize Database
+### Step 5: Initialize Database
+
 ```bash
-npm run db:init
-npm run db:seed
+# Create tables
+npx wrangler d1 execute haven_db --remote --file=./src/database/schema.sql
+
+# Add demo data
+npx wrangler d1 execute haven_db --remote --file=./src/database/seed.sql
 ```
 
-### Step 4: Set API Keys
+### Step 6: Set API Keys
+
 ```bash
+# Required: Anthropic API key
 npx wrangler secret put ANTHROPIC_API_KEY
-# Paste your Anthropic API key
+# Paste your key when prompted
 
+# Optional: OpenAI API key (for GPT-4o mini support)
 npx wrangler secret put OPENAI_API_KEY
-# Paste your OpenAI API key (optional, for cost optimization)
+# Paste your key when prompted
 ```
 
-### Step 5: Deploy
+### Step 7: Deploy!
+
 ```bash
 npm run deploy
 ```
 
-Your platform is now live at: `https://haven-platform.YOUR-SUBDOMAIN.workers.dev`
-
-## Access URLs
-
-- **Mobile Intake**: `https://your-worker.workers.dev/intake.html?qr=demo-qr-1`
-- **Caseworker Dashboard**: `https://your-worker.workers.dev/dashboard.html?id=demo-caseworker-1`
-- **Analytics**: `https://your-worker.workers.dev/analytics.html`
-
-## Demo Credentials
-
-### Test QR Codes (already created)
-- `HAVEN-DEMO001` - Downtown Shelter
-- `HAVEN-DEMO002` - City Library Outreach
-
-### Demo Caseworkers
-1. **Sarah Johnson** 
-   - Email: sarah.johnson@haven.demo
-   - ID: `demo-caseworker-1`
-   - Specializations: Veterans, Families, Chronic Homelessness
-
-2. **Michael Chen**
-   - Email: michael.chen@haven.demo
-   - ID: `demo-caseworker-2`
-   - Specializations: Youth, Mental Health
-
-## Testing the Flow
-
-### 1. Generate QR Code
-```bash
-curl -X POST https://your-worker.workers.dev/api/qr/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "location": "Downtown Shelter",
-    "campaign_name": "November Demo",
-    "caseworker_id": "demo-caseworker-1"
-  }'
+You'll see output like:
+```
+✨ Built successfully
+🚀 Deployed to https://haven-platform.your-account.workers.dev
 ```
 
-### 2. Complete Intake
-Visit: `https://your-worker.workers.dev/intake.html?qr={qr_id_from_step_1}`
+**Save this URL!** This is your live platform.
 
-### 3. View Dashboard
-Visit: `https://your-worker.workers.dev/dashboard.html?id=demo-caseworker-1`
+## Verify Deployment
 
-## Local Development
+### Test the API
 
 ```bash
-# Start local dev server with D1 local database
-npm run dev
-
-# Init local database
-npm run db:local:init
-npm run db:local:seed
-
-# Access at http://localhost:8787
+curl https://haven-platform.your-account.workers.dev/api/health
 ```
 
-## November 15 Demo Setup
+Should return:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-20T00:00:00.000Z"
+}
+```
 
-### Before Demo Day:
-1. ✅ Deploy to production (done above)
-2. Generate 10 demo QR codes for different locations
-3. Print QR codes as cards/posters
-4. Seed 5-10 sample client records for realistic dashboard
-5. Test complete flow end-to-end
-6. Prepare demo script highlighting:
-   - Mobile-first intake (scan → complete → assigned in minutes)
-   - AI-powered briefings
-   - Real-time analytics
-   - HUD compliance
+### Test the Frontend
 
-### During Demo:
-1. Show QR scan → intake form (on phone)
-2. Complete assessment (show trauma-informed questions)
-3. Show auto-assignment to caseworker
-4. Switch to caseworker dashboard
-5. Show AI daily briefing with recommendations
-6. Show client details and vulnerability score
-7. Switch to municipal analytics
-8. Show real-time metrics and HUD compliance
+Visit in your browser:
+```
+https://haven-platform.your-account.workers.dev/
+```
 
-## Cost Optimization
+You should see the HAVEN home page with three options:
+- Client Intake
+- Caseworkers
+- Municipal Analytics
 
-The AI engine automatically routes to the best model:
-- **Haiku** for simple tasks (intake analysis)
-- **GPT-4o Mini** for document generation
-- **Sonnet** for complex briefings
+## Post-Deployment Setup
 
-Aggressive caching reduces API calls by ~70%.
+### 1. Generate Demo QR Codes
+
+1. Visit: `https://your-worker.workers.dev/admin`
+2. Click "Generate New QR Code"
+3. Copy the intake URL
+4. Create 5-10 QR codes for different locations
+
+### 2. Test the Intake Flow
+
+1. Visit: `https://your-worker.workers.dev/intake/demo`
+2. Complete the assessment (use fake data for testing)
+3. Verify you get assigned to the demo caseworker
+4. Check the confirmation screen
+
+### 3. Test the Caseworker Dashboard
+
+1. Visit: `https://your-worker.workers.dev/caseworker/demo`
+2. Verify the dashboard loads
+3. Click "Daily Briefing" - this will trigger AI generation
+4. Check that your test client appears in the "Active Clients" list
+
+### 4. Test Municipal Analytics
+
+1. Visit: `https://your-worker.workers.dev/municipal`
+2. Verify the dashboard loads
+3. Stats will be zero until you have real intake data
 
 ## Troubleshooting
 
-### Database not found
-```bash
-# Recreate database
-npm run db:create
-# Update wrangler.toml with new ID
-npm run db:init
-npm run db:seed
+### Database Not Found Error
+
+```
+Error: D1_ERROR: no such table: clients
 ```
 
-### API Keys not working
+**Fix:** Re-run database initialization
 ```bash
-# Reset secrets
-npx wrangler secret delete ANTHROPIC_API_KEY
+npx wrangler d1 execute haven_db --remote --file=./src/database/schema.sql
+npx wrangler d1 execute haven_db --remote --file=./src/database/seed.sql
+```
+
+### API Key Errors
+
+```
+Error: ANTHROPIC_API_KEY not configured
+```
+
+**Fix:** Set the secret
+```bash
 npx wrangler secret put ANTHROPIC_API_KEY
 ```
 
-### Frontend not loading
-Check that `wrangler.toml` has:
+### Frontend Not Loading
+
+**Fix:** Make sure wrangler.toml has the correct assets configuration:
 ```toml
 [site]
 bucket = "./public"
-entry-point = "."
 ```
 
-### CORS errors
-The worker has CORS enabled for all origins. Check browser console for specific errors.
+If still broken, redeploy:
+```bash
+npm run deploy
+```
 
-## What's Next
+### 404 Errors on Routes
 
-Week 1 (Oct 18-24):
-- ✅ Deploy MVP
-- ✅ Test end-to-end flow
+The app uses client-side routing. Make sure you're accessing the correct URLs:
+- ✅ `https://your-worker.workers.dev/`
+- ✅ `https://your-worker.workers.dev/intake/demo`
+- ❌ `https://your-worker.workers.dev/intake/demo.html`
+
+## Local Development
+
+Want to test locally before deploying?
+
+```bash
+# Start local dev server
+npm run dev
+```
+
+Visit `http://localhost:8787`
+
+**Note:** Local mode uses a local D1 database. Initialize it:
+```bash
+npm run db:local:init
+npm run db:local:seed
+```
+
+## Updating the Platform
+
+Made changes? Redeploy:
+
+```bash
+npm run deploy
+```
+
+Changes are live in ~10 seconds.
+
+## Custom Domain (Optional)
+
+Want `haven.yourdomain.com` instead of `*.workers.dev`?
+
+1. Go to Cloudflare Dashboard
+2. Workers & Pages → haven-platform
+3. Settings → Triggers
+4. Add Custom Domain
+5. Enter your domain (must be on Cloudflare DNS)
+
+## Cost Monitoring
+
+### Check D1 Usage
+```bash
+npx wrangler d1 info haven_db
+```
+
+### Check Worker Usage
+Go to: Cloudflare Dashboard → Workers & Pages → haven-platform → Metrics
+
+### AI Cost Tracking
+Visit: `https://your-worker.workers.dev/api/cost-summary`
+
+## Security Best Practices
+
+1. **Rotate API Keys** - Every 90 days
+2. **Monitor Usage** - Check metrics weekly
+3. **Review Logs** - Use `wrangler tail` to watch logs
+4. **Restrict Admin Access** - Add authentication (future)
+5. **Enable Rate Limiting** - Cloudflare dashboard settings
+
+## Demo Day Preparation
+
+### 1 Week Before
+- [ ] Deploy to production
 - [ ] Generate 10 demo QR codes
-- [ ] Seed realistic demo data
-- [ ] Polish mobile UI
-- [ ] Add loading states
+- [ ] Complete 5 test intakes
+- [ ] Verify all dashboards work
+- [ ] Test AI briefing generation
+- [ ] Check mobile responsiveness
 
-Week 2 (Oct 25-31):
-- [ ] Document generation (progress notes, referrals)
-- [ ] SMS notifications (Twilio)
-- [ ] Calendar integration
-- [ ] Photo upload for documents
+### 3 Days Before
+- [ ] Print QR codes
+- [ ] Prepare demo script
+- [ ] Record backup video
+- [ ] Test on multiple devices
+- [ ] Verify internet connectivity plan
 
-Week 3 (Nov 1-7):
-- [ ] Advanced analytics
-- [ ] Export to HMIS
-- [ ] Spanish translation
-- [ ] Accessibility audit
+### Day Of
+- [ ] Test all URLs work
+- [ ] Have backup video ready
+- [ ] Phone fully charged
+- [ ] QR codes printed and laminated
+- [ ] Know your worker URL by heart
 
-Week 4 (Nov 8-14):
-- [ ] Final polish
-- [ ] Performance optimization
-- [ ] Demo rehearsal
-- [ ] Backup plan (recorded demo)
+## Getting Help
 
-## Support
+### Cloudflare Issues
+- Docs: https://developers.cloudflare.com/workers/
+- Community: https://community.cloudflare.com/
+- Support: support@cloudflare.com
 
-Questions? Issues?
-- Check GitHub repo: https://github.com/EinInnSol/haven-platform
-- Review ARCHITECTURE.md for technical details
-- Review ROADMAP.md for feature timeline
+### Platform Issues
+- GitHub Issues: https://github.com/EinInnSol/haven-platform/issues
+- Email: james@einharjer.com
+
+## Next Steps
+
+After successful deployment:
+
+1. **Generate QR Codes** - Create codes for different locations
+2. **Seed Demo Data** - Add realistic test clients
+3. **Test Everything** - Complete end-to-end testing
+4. **Prepare Demo** - Practice your pitch
+5. **Win That Contract** - Show them what HAVEN can do
 
 ---
 
-**Built with ❤️ by James & Claude**
-**Demo Date: November 15, 2025**
-**Target: $75K Long Beach Pilot Contract**
+**You're ready to deploy. Let's make this happen! 🚀**
+
+*Questions? Check ARCHITECTURE.md for technical details.*
